@@ -1,0 +1,1396 @@
+---
+title: "ISL_R_Practice"
+author: "Ruchi Sharma"
+date: "2022-08-25"
+output: html_document
+---
+
+## An Introduction to Statistical Learning
+
+This markdown has been created as a practice of some preliminary concepts by:\
+Ruchi Sharma [Graduate Student, UT Austin]
+
+### Chapter 2, Question 8
+
+```{r}
+## (a) 
+
+library(ISLR)
+summary(College)
+names(College)
+
+dim(College) # 777 x 18
+```
+
+```{r}
+## (b)
+# fix(College) 
+
+college.rownames = rownames(College) # Creates Values in Envt
+
+college = College[,-1] # Creates new dataframe with 17 variables now instead of 18
+names(college)
+```
+
+```{r}
+## (c)
+
+summary(College)
+pairs(College[,1:10])
+boxplot(Outstate~Private, data = College) 
+
+# binning 
+
+elite = rep("No", nrow(College))
+elite[college$Top10perc>50] = "Yes"
+elite = as.factor(elite)
+College = data.frame(College, elite)
+dim(College) # Another variable added to make it 19 from 18
+
+summary(College) # There are 78 elite universities
+
+boxplot(Outstate~elite, data = College)
+
+par(mfrow = c(2,2)) # divide window into 4 parts
+
+hist(College$Accept, xlim = c(0, 25000), xlab = "Accepted", main = "Accepted using default bin sizes") # Default is 30
+hist(College$Accept, xlim = c(0, 25000), breaks = 20, xlab = "Accepted", main = "Accepted using smaller bin sizes")
+hist(College$Top25perc, breaks = 25, xlab = "%age of new students from 25% of High School", main = "Top 25% Students")
+hist(College$perc.alumni, breaks = 10, xlab = "% alumni who donate", main = "Alumni")
+
+# extending exploration
+
+# Checking impact of Top10perc vs Grad.Rate
+
+mean(College$Top10perc)
+median(College$Top10perc)
+
+mean(College$Grad.Rate)
+median(College$Grad.Rate)
+
+par(mfrow=c(1,1)) # re-setting par
+plot(College$Top10perc, College$Grad.Rate, xlab = "Top 10%", ylab = 'Grad rate', main = "Grad rate vs Plot of S/F")
+
+# Plotting a linear regression line 
+abline(lm(College$Grad.Rate~College$Top10perc), col = "green")
+
+# Although there is a direct relation but spread of the data around the line is huge
+# Thus, we have high standard deviation or error
+
+# Plotting local regression line with smoothing of 25%
+
+loessMod = loess(Grad.Rate ~ Top10perc, data = College, span = 0.25)
+j = order(College$Top10perc)
+lines(College$Top10perc[j], loessMod$fitted[j], col = "blue")
+```
+
+### Chapter 2, Question 9
+
+```{r}
+library(ISLR)
+names(Auto)
+
+## (a)
+
+summary(Auto)
+
+# Quantitative
+# mpg, cylinder, displacement, horsepower, weight, acceleration, year
+
+# Qualitative
+# name, origin
+
+# Although summary calculates stats for origin but it is evident that it is qualitative
+temp = Auto$origin # We can see the values taken by temp are not continuous quantities
+```
+
+```{r}
+## (b)
+
+# range can also be seen in the max min of summary # Method 1
+range(Auto$mpg) # Method 2
+sapply(Auto[,1:7], range) # Method 3
+```
+
+```{r}
+## (c)
+
+sapply(Auto[,1:7], mean)
+sapply(Auto[,1:7], sd)
+```
+
+```{r}
+## (d)
+
+Auto_Update <- Auto[-c(10:85),] 
+sapply(Auto_Update[,1:7], range)
+sapply(Auto_Update[,1:7], mean)
+sapply(Auto_Update[,1:7], sd)
+```
+
+```{r}
+## (e)
+
+pairs(Auto[,1:7])
+# Cylinders seems to be independent of other parameters
+# There are some linear relationships, mpg and disp seem negatively correlated
+
+cor(Auto[,1:7])
+# High correlation bw cylinders and displacement, weight and displacement
+```
+
+```{r}
+## (f)
+
+# Yes, can predict mpg based on other variables
+# Inversely correlated: cylinders, displacement, horsepower, weight
+# Can infer that as year increase i.e. newer models, mpg is higher
+```
+
+### Chapter 2, Question 10
+
+```{r}
+## (a)
+library(MASS)
+?Boston 
+# 506 rows X 14 columns - Housing Values in Suburbs of Boston
+# rows - suburbs/towns
+# Columns - predictors
+  # crim: per capita crime rate in town
+  # zn: proportion of residential land zoned for lots over 25,000 sq.ft.
+  # indus: proportion of non-retail business acres per town
+  # chas: Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)
+  # nox: nitrogen oxides concentration (parts per 10 million)
+  # rm: average number of rooms per dwelling
+  # age: proportion of owner-occupied units built prior to 1940
+  # dis: weighted mean of distances to five Boston employment centres
+  # rad: index of accessibility to radial highways
+  # tax: full-value property-tax rate per \$10,000
+  # ptratio: pupil-teacher ratio by town
+  # black: 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town
+  # lstat: lower status of the population (percent)
+  # medv: median value of owner-occupied homes in \$1000s
+```
+
+```{r}
+## (b)
+
+# taking quantitative variables for initial exploration
+pairs(~crim + nox + rm + dis + rad + tax + medv, data = Boston)
+pairs(~dis + medv, data = Boston) # trial for checking some pairs individually
+
+# Some observations from the plots:
+# 1. -ve linear reln between crim and medv; crim and dis
+# 2. +ve linear reln betwen dis and medv
+# 3. Not very high correlation among variables (maybe)
+```
+
+```{r}
+## (c)
+
+# checking corr of crim vs other predictors
+cor(Boston[-1],Boston$crim)
+
+# not very high magnitude of correlation
+# +ve: indus, nox, age, rad, tax, ptratio, lstat (Highest: rad)
+# -ve: zn, chas, rm, dis, black, medv (Lowest: medv)
+```
+
+```{r}
+## (d)
+
+summary(Boston$crim) # Mean is greater than Median - Skewed Dist. 
+
+High_crime = Boston[which((Boston$crim) > mean(Boston$crim) + 2*sd(Boston$crim)),]
+# 16 Obs in output i.e. outside 95% interval
+# max = 88.97620 -> very far from mean = 3.61352 -> suggests very high crime rate
+# wide range -> 0.006 to 88.976
+High_crime_2 = Boston[which((Boston$crim) > mean(Boston$crim) + sd(Boston$crim)),]
+# 43 Obs in output
+
+summary(Boston$tax) # Mean and Median closer
+High_tax = Boston[which((Boston$tax) > mean(Boston$tax) + 2*sd(Boston$tax)),]
+# 0 Obs in output, nothing outside 95% interval
+High_tax_2 = Boston[which((Boston$tax) > mean(Boston$tax) + sd(Boston$tax)),]
+# 137 Obs in output
+# range seems fine -> 187 to 711 with 330 Median and 408.2 Mean
+
+summary(Boston$ptratio) # Mean and Median closer
+pup_tea_r = Boston[which((Boston$ptratio) > mean(Boston$ptratio) + 2*sd(Boston$ptratio)),]
+# O Obs in output
+pup_tea_r_2 = Boston[which((Boston$ptratio) > mean(Boston$ptratio) + sd(Boston$ptratio)),]
+# 56 Obs in output
+# range is narrower -> 12.6 to 22 with 19.05 Median and 18.46 Mean
+```
+
+```{r}
+## (e)
+sum(Boston$chas==1) # 35 suburbs are bounded by Charles river
+```
+
+```{r}
+## (f)
+summary(Boston$ptratio) # median 19.05
+```
+
+```{r}
+## (g)
+which(Boston$medv == min(Boston$medv)) # two suburbs - 399 & 406 has lowest medv
+
+Boston[399,] # compairing with summary(Boston)
+  # crim 38.3518 - VERY HIGH compared to mean
+  # zn 0 
+  # indus 18.1
+  # chas 0
+  # nox 0.693
+  # rm 5.453
+  # age 100
+  # dis 1.4896
+  # rad 24
+  # tax 666
+  # ptratio 20.2 - Closer to the MAX value in the dataset
+  # black 396.9
+  # lstat 30.59 - Closer to the MAX value in the dataset
+  # medv 5
+
+Boston[406,] # compairing with summary(Boston)
+  # crim 67.9208 - VERY HIGH compared to mean
+  # zn 0
+  # indus 18.1
+  # chas 0
+  # nox 0.693
+  # rm 5.683
+  # age 100
+  # dis 1.4254
+  # rad 24
+  # tax 666
+  # ptratio 20.2 - Closer to the MAX value in the dataset
+  # black 384.97 
+  # lstat 22.98
+  # medv 5
+
+# a lot of predictors for 399, 406 match or are quite close
+```
+
+```{r}
+## (h)
+  
+sum(Boston$rm > 7) # 64
+sum(Boston$rm > 8) # 13
+
+summary(subset(Boston, rm > 8))
+# for suburbs that average more than 8 rooms per dwelling:
+# crim mean and max is very small as compared to total set
+# lstat is also relatively lower
+# medv is higher, min value and mean is higher than total set
+```
+
+### Chapter 3, Question 8
+
+```{r}
+## (a)
+
+library(ISLR)
+summary(Auto)
+lin = lm(mpg ~ horsepower, Auto)
+summary(lin)
+
+# p-value is close to zero -> strong relationship
+# There's a negative relationship, negative slope, -0.15
+
+predict(lin, data.frame(horsepower = 98, interval = "confidence"))
+predict(lin, data.frame(horsepower = 98, interval = "prediction"))
+```
+
+```{r}
+## (b)
+
+plot(mpg ~ horsepower, data = Auto)
+abline(lin, lwd = 2, col = "green")
+```
+
+```{r}
+## (c)
+
+par(mfrow = c(2,2))
+plot(lin)
+```
+
+### Chapter 3, Question 9
+
+```{r}
+## (a)
+
+pairs(Auto[,1:9])
+# but 9th is qualitative - "name"
+pairs(Auto[,1:8])
+```
+
+```{r}
+## (b)
+
+cor(Auto[,1:8])
+```
+
+```{r}
+## (c)
+
+reg = lm(mpg~.-name, data = Auto)
+summary(reg)
+
+# p-value is quite small for the F-statistic obtained
+# reject null hypothese - indicates strong relationship 
+
+# Predictors with statistically significant response:
+# Looking at p-values - Displacement, Weight, Year and Origin
+
+# Coeff of the year variable = 0.750773 
+# Implication: Keeping other variables constant, 1 unit increase in year, increases mpg by 0.75
+```
+
+```{r}
+## (d)
+
+par(mfrow = c(2,2))
+plot(reg)
+
+# Residual Vs Fitted - Non-Linear - Polynomial Reg could work better 
+```
+
+```{r}
+## (e)
+
+interact = lm(mpg~.-name + cylinders:displacement + horsepower:weight, data = Auto)
+summary(interact)
+plot(interact)
+
+# Observations:
+# No significant change in p-value as compared with original model
+# Multiple Rsq increased from 0.8215 to 0.863
+# Adj Rsq increased from 0.8182 to 0.8598
+# RSE decreased from 3.328 to 2.923
+
+# Conclusion: the combination used seems to be statistically significant 
+```
+
+```{r}
+## (f)
+
+random_combination = lm(mpg~.-name + year:cylinders 
+                        + I(horsepower^2) + I(acceleration^2), data = Auto)
+
+summary(random_combination)
+```
+
+### Chapter 3, Question 10
+
+```{r}
+## (a)
+
+library(ISLR)
+summary(Carseats)
+
+predict_sales = lm(Sales~Price+Urban+US, data = Carseats)
+summary(predict_sales)
+```
+
+```{r}
+## (b)
+
+# Qual Predictors: US, Urban
+# Quant Predictor: Price
+
+# Interpreration of Model Coeff
+# -ve coeff -> Price, UrbanYes; +ve coeff -> USYes
+# For every unit increase in price, sales will fall by 54 (0.054*1000)
+
+# Residual Error = 2.472 (Low)
+# Multiple RSq = 0.2393 (low)
+# For FStat 41.52 -> pvalue close to zero (good fit)
+
+# UrbanYes -> not statistically significant (coeff = -0.021916, t value = -0.081)
+## NEED TO CHECK ##
+
+# USYes -> coeff = 1.2 -> If shop in US, there's an average increase in car seat sales of 1200 units
+```
+
+```{r}
+## (c)
+
+attach(Carseats)
+contrasts(Urban)
+contrasts(US)
+
+# y = b0 + b1x1 + b2x2 + b3x3
+# Sales = 13.043469 + (-0.054459)*Price + (-0.021916)*Urban(Yes:1, No:0) + (1.200573)*US(Yes:1, No:0)
+```
+
+```{r}
+## (d)
+
+all_vars = lm(Sales~., data = Carseats)
+summary(all_vars)
+
+# Null Hyp: No relation of any predictor with the result
+
+# Looking at tstat vs Std Error
+
+# CompPrice - low coeff but far from zero since tvalue is 22.378
+# Income - low coeff but far from zero since tvalue is 8.565
+# Advertising - low coeff but far from zero since tvalue is 11.066
+# Population - very low coeff and also low tvalue = 0.561
+# Price - low negative coeff, high negative tvaluye = -35.700
+# ShelveLocGood - high coeff, high tvalue = 31.678
+# ShelveLocMedium - high coeff, high tvalue = 15.516
+# Age - low coeff, high negative tvalue = -14.42
+# Education - low coeff, low negative tvalue = -1.070
+# UrbanYes - low coeff, low tvalue = 1.088
+# USYes - low coeff, low negative tvalue = -1.229
+
+# No reln: Population, Education, UrbanYes, USYes
+# Reln: Reject Null Hyp: CompPrice, Income, Advertising, 
+#                         Price, ShelveLocGood, ShelveLocMedium, Age
+```
+
+```{r}
+## (e)
+
+new_model = lm(Sales~CompPrice + Income + Advertising + Price + ShelveLoc + Age, data = Carseats)
+summary(new_model)
+```
+
+```{r}
+## (f)
+
+summary(predict_sales)
+summary(new_model) 
+
+# Model in (a) Vs Model in (e) - the second model has: 
+  # lower range of residuals, lower standard errors, higher t-values
+  # Lower RSE, Higher Rsq and Adj Rsq, much higher F Statistic, not much difference in p-value
+
+# Thus, model in (e) is much better than model in (a)
+```
+
+```{r}
+## (g)
+
+confint(new_model) 
+```
+
+```{r}
+## (h)
+
+par(mfrow=c(2,2))
+plot(new_model)
+
+# Fron Residuals vs Fitted chart - evident that good fit
+# But there are some outliers - obs 358 (more than 3 residuals away)
+```
+
+### Chapter 3, Question 11
+
+```{r}
+set.seed(1)
+x = rnorm(100)
+y = 2*x + rnorm(100)
+
+## (a) 
+
+no_int_reg = lm(y~x+0)
+summary(no_int_reg)
+```
+
+```{r}
+## (b)
+
+no_int_reg2 = lm(x~y+0)
+summary(no_int_reg2)
+```
+
+```{r}
+## (c)
+
+# Observe same t-statistic and p-value for both
+# Reg line is same with inverted axis
+```
+
+```{r}
+## (d)
+
+numer = (sqrt(length(x)-1))*sum(x*y)
+denom = sqrt(sum(x^2)*sum(y^2) - sum(x*y)^2)
+
+t_stat = numer/denom
+t_stat # Matches
+```
+
+```{r}
+## (e)
+
+# In (d) replacing y with x will give same equation, hence same t_stat
+```
+
+```{r}
+## (f)
+
+with_int_reg = lm(y~x)
+summary(with_int_reg)
+
+# t statistic obtained is almost equal to that obtained with no intercept regression
+```
+
+### Chapter 3, Question 13
+
+```{r}
+
+set.seed(1)
+
+## (a)
+
+x = rnorm(100, mean = 0, sd = 1)
+```
+
+```{r}
+## (b)
+
+eps = rnorm(100, mean = 0, sd = 0.5) # variance = 0.25
+```
+
+```{r}
+## (c)
+
+y = -1 + 0.5*x + eps
+
+# length of y = 100, Bo = -1, B1 = 0.5 
+```
+
+```{r}
+## (d)
+
+plot(y~x)
+
+# y and x seem to have a positive linear relationship 
+```
+
+```{r}
+## (e)
+
+fitline = lm(y~x)
+summary(fitline)
+
+# B0_hat = -0.98, B1_hat = 0.47326
+# values quite close to B0 and B1 respectively
+
+```
+
+```{r}
+## (f)
+
+# abline(fitline, col = "blue")
+# abline(a = -1, b = 0.5, col = "red")
+
+# regression line and population line are very close to each other
+# p-val near zero and F-stat is large -> null hyp can be rejected
+```
+
+```{r}
+## (g)
+
+poly = lm(y~x + I(x^2))
+summary(poly)
+
+# RSE for both cases is almost equal -> quadratic term did not improve the fit
+```
+
+```{r}
+## (h)
+
+eps_low = rnorm(100, mean = 0, sd = 0.02)
+y = -1 + 0.5*x + eps_low
+
+plot(y~x)
+
+fitline2 = lm(y~x)
+summary(fitline)
+
+abline(fitline, col = "blue")
+abline(a = -1, b = 0.5, col = "red")
+
+# RSE is very low in this case as noise is very low
+```
+
+```{r}
+## (i)
+
+eps_high = rnorm(100, mean = 0, sd = 1)
+y = -1 + 0.5*x + eps_high
+
+plot(y~x)
+
+fitline3 = lm(y~x)
+summary(fitline)
+
+abline(fitline, col = "blue")
+abline(a = -1, b = 0.5, col = "red")
+```
+
+```{r}
+## (j)
+
+confint(fitline) 
+confint(fitline2)
+confint(fitline3)
+```
+
+### Chapter 3, Question 14
+
+```{r}
+
+set.seed(1)
+x1 = runif(100)
+x2 = 0.5*x1+rnorm(100)/10
+y = 2 + 2*x1 + 0.3*x2 + rnorm(100)
+
+## (a)
+
+# B0 = 2; B1 = 2, B2 = 0.3
+```
+
+```{r}
+## (b)
+
+cor(x1,x2) # 0.835
+plot(x2~x1)
+```
+
+```{r}
+## (c)
+
+modeling = lm(y~x1+x2)
+summary(modeling)
+
+# B0_hat = 2.1305, B1_hat = 1.4396, B2_hat = 1.0097
+# RSE is high, Error increases from x1 to x2
+
+# p value is less than 0.05 for x1, can reject H0 (null hypothesis)
+# p value is much more than 0.05 for x2, cannot reject H0 
+```
+
+```{r}
+## (d)
+
+model_x1 = lm(y~x1)
+summary(model_x1)
+
+# RSE and R2 are similar to when using x1+x2, F-statistic is slightly greater
+# pval near zero for x1, can reject null hyp
+```
+
+```{r}
+## (e)
+
+model_x2 = lm(y~x2)
+summary(model_x2)
+
+# pval near zero for x2, can reject null hyp
+
+## (f)
+```
+
+```{r}
+# explained using collinearity
+
+## (g)
+```
+
+```{r}
+x1 = c(x1, 0.1)
+x2 = c(x2, 0.8)
+y = c(y,6)
+
+modeling2 = lm(y~x1+x2)
+summary(modeling2)
+
+plot(y~x1+x2)
+
+plot(x1, x2)
+text(x = 0.1, y = 0.8, col="blue")
+
+# new point seems to be outlier
+```
+
+### Chapter 3, Question 15
+
+```{r}
+
+library(ISLR)
+summary(Boston)
+
+# Predicting Per Capita Crime Rate
+
+# (a)
+
+model_zn = lm(crim~zn, data=Boston)
+summary(model_zn)
+# Coeff: -0.07393 
+# PVal: 5.506e-06
+
+model_indus = lm(crim~indus, data=Boston)
+summary(model_indus)
+# Coeff: 0.50978
+# PVal: < 2.2e-16
+
+model_chas = lm(crim~chas, data=Boston)
+summary(model_chas)
+# Coeff: -1.8928 
+# PVal: 0.2094
+
+model_nox = lm(crim~nox, data=Boston)
+summary(model_nox)
+# Coeff: 31.249
+# PVal: < 2.2e-16
+
+model_rm = lm(crim~rm, data=Boston)
+summary(model_rm)
+# Coeff: -2.684  
+# PVal: 6.347e-07
+
+model_age = lm(crim~age, data=Boston)
+summary(model_age)
+# Coeff: 0.10779
+# PVal: 2.855e-16
+
+model_dis = lm(crim~dis, data=Boston)
+summary(model_dis)
+# Coeff: -1.5509
+# PVal: < 2.2e-16
+
+model_rad = lm(crim~rad, data=Boston)
+summary(model_rad)
+# Coeff: 0.61791
+# PVal: < 2.2e-16
+
+model_tax = lm(crim~tax, data=Boston)
+summary(model_tax)
+# Coeff: 0.029742
+# PVal: < 2.2e-16
+
+model_ptratio = lm(crim~ptratio, data=Boston)
+summary(model_ptratio)
+# Coeff: 1.1520
+# PVal: 2.943e-11
+
+model_black = lm(crim~black, data=Boston)
+summary(model_black)
+# Coeff: -0.036280 
+# PVal: < 2.2e-16
+
+model_lstat = lm(crim~lstat, data=Boston)
+summary(model_lstat)
+# Coeff: 0.54880
+# PVal: < 2.2e-16
+
+model_medv = lm(crim~medv, data=Boston)
+summary(model_medv)
+# Coeff: -0.36316
+# PVal: < 2.2e-16
+
+# Positive Relationship: indus, nox, age, rad, tax, lstat, ptratio
+# Negative Relationship: zn, chas, rm, dis, black, medv
+
+# Looking at pvalues, only chas is statistically insignificant 
+
+attach(Boston)
+
+plot(ptratio, crim)
+abline(model_ptratio, lwd = 2, col ="green")
+
+plot(dis, crim)
+abline(model_dis, lwd = 2, col ="blue")
+```
+
+```{r}
+# (b)
+
+multi = lm(crim~., data = Boston)
+summary(multi)
+
+# Coeffs 
+
+# Zn -0.07393 -> 0.04485 
+# indus 0.50978 -> -0.063855
+# chas -1.8928 -> -0.749134
+# nox 31.249 -> -10.313535
+# rm -2.684 -> 0.430131
+# age 0.10779 -> 0.001452
+# dis -1.5509 -> -0.987176
+# rad 0.61791 -> 0.588209
+# tax 0.029742 -> -0.003780
+# ptratio 1.1520 -> -0.271081
+# black -0.036280 -> -0.007538
+# lstat 0.54880 -> 0.126211
+# medv -0.36316 -> -0.198887
+
+# We can see that for some of the variable the coefficients have not only changed in magnitude but also sign
+# In simple linear regression, all vriables are ignored while in multiple regression all others are kept constant while analysis the impact of predictor in question
+# Thus this change in coefficients and their statistical significance is well justified by collinearity 
+
+# Null hypothesis can be rejected for pval < 0.05 -> zn, dis, rad, black, medv
+```
+
+```{r}
+## (c)
+
+# The results comparison between (a) and (b) has been already explained above. 
+
+univ <- vector(mode = "numeric", length = 0) # creating empty vector to populate with coefficients 
+
+univ <- c(univ, model_zn$coefficients[2]) # R indexing begins from 1 
+univ <- c(univ, model_indus$coefficients[2])
+univ <- c(univ, model_chas$coefficients[2])
+univ <- c(univ, model_nox$coefficients[2])
+univ <- c(univ, model_rm$coefficients[2])
+univ <- c(univ, model_age$coefficients[2])
+univ <- c(univ, model_dis$coefficients[2])
+univ <- c(univ, model_rad$coefficients[2])
+univ <- c(univ, model_tax$coefficients[2])
+univ <- c(univ, model_ptratio$coefficients[2])
+univ <- c(univ, model_black$coefficients[2])
+univ <- c(univ, model_lstat$coefficients[2])
+univ <- c(univ, model_medv$coefficients[2])
+
+multiv <- vector(mode = "numeric", length = 0) # creating empty vector to populate with coefficients 
+
+multiv <- c(multiv, multi$coefficients)
+multiv <- multiv[-1]
+
+par(mfrow = c(1, 1))
+plot(univ, multiv, col = 'blue')
+```
+
+```{r}
+## (d)
+
+# Checking Degree 3 Polynomial Fit
+
+model_zn_3 = lm(crim~zn+I(zn^2)+I(zn^3), data=Boston)
+summary(model_zn_3)
+# zn
+
+model_indus_3 = lm(crim~indus+I(indus^2)+I(indus^3), data=Boston)
+summary(model_indus_3)
+# indus, indus^2, indus^3
+
+model_nox_3 = lm(crim~nox+I(nox^2)+I(nox^3), data=Boston)
+summary(model_nox_3)
+# nox, nox^2, nox^3
+
+model_rm_3 = lm(crim~rm+I(rm^2)+I(rm^3), data=Boston)
+summary(model_rm_3)
+# None 
+
+model_age_3 = lm(crim~age+I(age^2)+I(age^3), data=Boston)
+summary(model_age_3)
+# age^2, age^3
+
+model_dis_3 = lm(crim~dis+I(dis^2)+I(dis^3), data=Boston)
+summary(model_dis_3)
+# dis, dis^2, dis^3
+
+model_rad_3 = lm(crim~rad+I(rad^2)+I(rad^3), data=Boston)
+summary(model_rad_3)
+# None
+
+model_tax_3 = lm(crim~tax+I(tax^2)+I(tax^3), data=Boston)
+summary(model_tax_3)
+# None
+
+model_ptratio_3 = lm(crim~ptratio+I(ptratio^2)+I(ptratio^3), data=Boston)
+summary(model_ptratio_3)
+# ptratio, ptratio^2, ptratio^3
+
+model_black_3 = lm(crim~black+I(black^2)+I(black^3), data=Boston)
+summary(model_black_3)
+# None
+
+model_lstat_3 = lm(crim~lstat+I(lstat^2)+I(lstat^3), data=Boston)
+summary(model_lstat_3)
+# None
+
+model_medv_3 = lm(crim~medv+I(medv^2)+I(medv^3), data=Boston)
+summary(model_medv_3)
+# medv, medv^2, medv^3
+
+# From all above summary results we can see that following degree 3 coefficients are statistically significant: 
+# indus, nox, age, dis, ptratio, medv
+
+```
+
+### Chapter 6, Question 9
+
+```{r}
+
+library(ISLR)
+data(College)
+
+# install.packages("glmnet") # DONE
+# install.packages("pls) # DONE
+# install.packages("pcr") # DONE
+
+library(glmnet)
+require(pls)
+
+set.seed(1)
+
+x = model.matrix(Apps~., College)[,-1]
+y = College$Apps
+
+## (a)
+
+train = sample(1:nrow(College), round(nrow(College) * 0.6))
+test = (-train)
+
+df_train = College[train, ]
+df_test = College[-train, ]
+```
+
+```{r}
+## (b)
+
+linear_model = lm(Apps ~ ., data = df_train)
+linear_pred = predict(linear_model, df_test)
+linear_mse = mean((linear_pred - df_test$Apps)^2) # Output: 1124481.5726
+```
+
+```{r}
+## (c)
+
+grid = 10^seq(10, -2, length = 100)
+
+cv1 = cv.glmnet(x[train,], y[train], alpha = 0)
+lam = cv1$lambda.min # 382.88
+
+ridge1 = glmnet(x[train,], y[train], alpha = 0, lambda = grid, thresh = 1e-12)
+ridge_pred = predict(ridge1, s = lam, newx = x[test,])
+ridge_err = mean((ridge_pred - y[test])^2) # Output = 1033013.5726
+```
+
+```{r}
+## (d)
+
+cv2 = cv.glmnet(x[train,], y[train], alpha = 1)
+lam2 = cv2$lambda.min
+
+lasso1 = glmnet(x[train,], y[train], alpha = 1, lambda = grid)
+lasso_pred = predict(lasso1, s = lam2, newx = x[test,])
+lasso_err = mean((lasso_pred - y[test])^2) # Output = 1113405.8410
+
+lasso.coef = predict(lasso1, type = "coefficients", s = lam2)[1:18,]
+
+length(lasso.coef[lasso.coef != 0]) # Ouput 17
+length(lasso.coef[lasso.coef == 0]) # Ouput 1
+
+lasso.coef[lasso.coef == 0] # F.Undergrad 
+lasso.coef
+```
+
+```{r}
+## (e)
+
+pcr1 = pcr(Apps~., data = College, subset = train, scale = T, validation = "CV")
+validationplot(pcr1, val.type = "MSEP") # Observing from the graph - test for 5, 15, 16 
+
+pcr_pred = predict(pcr1, x[test,], ncomp = 5)
+mean((pcr_pred - y[test])^2) # 1877569
+
+pcr_pred = predict(pcr1, x[test,], ncomp = 15)
+mean((pcr_pred - y[test])^2) # 1238541
+
+pcr_pred = predict(pcr1, x[test,], ncomp = 16)
+pcr_err = mean((pcr_pred - y[test])^2) # 1206092 # Selecting for 16
+```
+
+```{r}
+## (f)
+
+pls1 = plsr(Apps~., data = College, subset = train, scale = T, validation = "CV")
+validationplot(pls1, val.type = "MSEP") # Observing from the graph - test for 1, 5, 6, 7
+
+pls_pred = predict(pls1, x[test,], ncomp = 1)
+mean((pls_pred - y[test])^2) # 2391370
+
+pls_pred = predict(pls1, x[test,], ncomp = 5)
+mean((pls_pred - y[test])^2) # 1175328
+
+pls_pred = predict(pls1, x[test,], ncomp = 6)
+pls_err = mean((pls_pred - y[test])^2) # 1138191 # Selecting for 6
+
+pls_pred = predict(pls1, x[test,], ncomp = 7)
+mean((pls_pred - y[test])^2) # 1150548
+```
+
+```{r}
+## (g)
+
+err = c(linear_mse, ridge_err, lasso_err, pcr_err, pls_err)
+barplot(err, xlab = "Model", ylab="Test Error", names = c("linear", "ridge", "lasso", "pcr", "pls"))
+
+# Order of error (highest to lowest)
+# PCR, PLS, LINEAR, LASSO, RIDGE
+# All models are quite close in performance 
+
+# Calculation R2 for accuracy
+
+test_avg = mean(y[test])
+
+linear_r2 = 1 - mean((linear_pred - y[test])^2) / mean((test_avg - y[test])^2) # 0.9118
+ridge_r2 = 1 - mean((ridge_pred - y[test])^2) / mean((test_avg - y[test])^2) # 0.9189
+lasso_r2 = 1 - mean((lasso_pred - y[test])^2) / mean((test_avg - y[test])^2) # 0.9126
+pcr_r2 = 1 - mean((pcr_pred - y[test])^2) / mean((test_avg - y[test])^2) # 0.9054
+pls_r2 = 1 - mean((pls_pred - y[test])^2) / mean((test_avg - y[test])^2) # 0.9097
+
+# R2 indicates predictions are close to correct
+```
+
+### Chapter 6, Question 11
+
+```{r}
+
+## (a) - TRY OUT REG METHODS IN CHAPTER - DISCUSS RESULTS
+
+library(MASS)
+data(Boston)
+```
+
+```{r}
+
+### BEST SUBSET SELECTION ###
+
+names(Boston)
+dim(Boston)
+sum(is.na(Boston$crim))
+
+library(leaps)
+regfit.full = regsubsets(crim~., Boston)
+s1 = summary(regfit.full)
+names(s1)
+s1$rsq
+
+regfit.full2 = regsubsets(crim~., data = Boston, nvmax = 13)
+s2 = summary(regfit.full2)
+names(s2)
+s2$rsq
+
+par(mfrow=c(2,2))
+plot(s2$rss ,xlab="Number of Variables ",ylab="RSS",
+       type="l")
+plot(s2$adjr2 ,xlab="Number of Variables ",
+       ylab="Adjusted RSq",type="l")
+
+# Plot makes it evident to keep all variables 
+
+set.seed(1)
+train = sample(c(TRUE, FALSE), nrow(Boston), rep = TRUE)
+test = (!train)
+
+regfit.best = regsubsets(crim~., data = Boston[train,], nvmax = 13)
+test.mat = model.matrix(crim~., data = Boston[test,])
+val.errors = rep(NA, 13)
+for (i in 1:13){
+  coefi = coef(regfit.best, id = i)
+  pred = test.mat[,names(coefi)]%*%coefi
+  val.errors[i] = mean((Boston$crim[test]-pred)^2)
+}
+
+val.errors
+which.min(val.errors) # 9
+coef(regfit.best, 9)
+
+regfit.best = regsubsets(crim~., data = Boston, nvmax = 13)
+coef(regfit.best, 9)
+
+k = 10
+set.seed(1)
+folds = sample(1:k, nrow(Boston), replace = TRUE)
+cv.errors = matrix(NA, k, 13, dimnames = list(NULL, paste(1:13)))
+
+predict.regsubsets = function (object ,newdata ,id ,...){
+  form=as.formula(object$call [[2]])
+  mat=model.matrix(form,newdata)
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi 
+  }
+
+for(j in 1:k){
+  best.fit = regsubsets(crim~., data = Boston[folds!=j,], nvmax = 13)
+  for (i in 1:13){
+    pred = predict(best.fit, Boston[folds == j,], id = i)
+    cv.errors[j, i] = mean((Boston$crim[folds==j]-pred)^2)
+  }
+}
+
+mean.cv.errors = apply(cv.errors, 2, mean)
+mean.cv.errors
+
+par(mfrwo=c(1,1))
+plot(mean.cv.errors, type = 'b')
+
+# cv error lowest for model with 9 variables 
+mean.cv.errors[9] # Output: 42.53822
+
+reg.best = regsubsets(crim~., data = Boston, nvmax = 13)
+coef(reg.best, 9)
+
+```
+
+```{r}
+
+### RIDGE REGRESSION ###
+
+x = model.matrix(crim~., Boston)[,-1]
+y = Boston$crim
+
+library(glmnet)
+grid = 10^seq(10, -2, length = 100)
+ridge.mod = glmnet(x, y, alpha = 0, lambda = grid)
+dim(coef(ridge.mod)) # 14 100
+
+ridge.mod$lambda[50] # 11497.57
+coef(ridge.mod)[,50]
+
+ridge.mod$lambda[60] # 705.4802
+coef(ridge.mod)[,60] 
+
+predict(ridge.mod, s = 50, type = "coefficients")[1:14,]
+
+set.seed (1)
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
+
+ridge.mod = glmnet(x[train,], y[train], alpha = 0, lambda = grid, thresh = 1e-12)
+ridge.pred = predict(ridge.mod, s = 4, newx = x[test,])
+mean((ridge.pred-y.test)^2) # 40.77723
+
+mean((mean(y[train])-y.test)^2) # 62.68428
+
+ridge.pred = predict(ridge.mod, s = 1e10, newx = x[test,])
+mean((ridge.pred-y.test)^2) # 62.68428
+
+ridge.pred = predict(ridge.mod, s = 0, newx = x[test,])
+mean((ridge.pred-y.test)^2) # 41.51969
+
+```
+
+```{r}
+
+### LASSO ###
+
+lasso.mod = glmnet(x[train,], y[train], alpha = 1, lambda = grid)
+plot(lasso.mod)
+
+set.seed(1)
+cv.out = cv.glmnet(x[train,], y[train], alpha = 1)
+plot(cv.out)
+bestlam = cv.out$lambda.min
+lasso.pred = predict(lasso.mod, s = bestlam, newx = x[test,])
+mean((lasso.pred-y.test)^2) # 40.99066
+
+out = glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef = predict(out, type = "coefficients", s = bestlam)[1:14,]
+lasso.coef
+
+```
+
+```{r}
+### PRINCIPAL COMPONENT REGRESSION ###
+
+library(pls)
+set.seed(2)
+pcr.fit = pcr(crim~., data = Boston, scale = TRUE, validation = "CV")
+
+summary(pcr.fit)
+validationplot(pcr.fit, val.type = "MSEP")
+
+set.seed(1)
+pcr.fit = pcr(crim~., data = Boston, subset = train, scale = TRUE, validation = "CV")
+validationplot(pcr.fit, val.type = "MSEP")
+
+# how to select ncomp from graph? It's decreasing throughout
+# 8 
+
+pcr.pred = predict(pcr.fit, x[test,], ncomp = 8)
+mean((pcr.pred-y.test)^2) # 43.21097
+
+pcr.pred = predict(pcr.fit, x[test,], ncomp = 13)
+mean((pcr.pred-y.test)^2) # 41.54639
+
+pcr.pred = predict(pcr.fit, x[test,], ncomp = 4)
+mean((pcr.pred-y.test)^2) # 43.91107
+
+```
+
+```{r}
+### PARTIAL LEAST SQUARES ###
+
+set.seed(1)
+pls.fit = plsr(crim~., data = Boston, subset = train, scale = TRUE, validation = "CV")
+summary(pls.fit)
+validationplot(pls.fit, val.type = "MSEP")
+
+# how to select ncomp
+
+pls.pred = predict(pls.fit, x[test,], ncomp = 2)
+mean((pls.pred-y.test)^2) # 42.74086
+
+pls.fot = plsr(crim~., data = Boston, scale = TRUE, ncomp = 2)
+summary(pls.fit)
+```
+
+```{r}
+## (b) - Propose models that perform well, evaluate using cross validation
+```
+
+```{r}
+## (c) - does chosen model involve all features - why or why not
+
+# I would choose the Lasso model, as it gives the lowest test mse. 
+# Lasso models are generally more interpretable.
+
+# It results in a sparse model with 10 variables. 
+# Two variables whose effect on the response were below the required threshold were removed.
+```
+
+### Chapter 8, Question 8
+
+```{r}
+
+library(ISLR)
+data(Carseats)
+dim(Carseats)
+
+## (a)
+
+set.seed(1)
+train = sample(c(TRUE, FALSE), nrow(Carseats), rep = TRUE)
+test = (!train)
+```
+
+```{r}
+## (b)
+
+par(mfrow = c(1, 1))
+
+library(tree)
+tree_model = tree(Sales~., Carseats[train,])
+
+summary(tree_model)
+plot(tree_model)
+text(tree_model)
+
+tree_pred = predict(tree_model, Carseats[test,])
+test_mse = mean((tree_pred - Carseats[test,]$Sales)^2) # 5.207756
+
+# Points to note:
+# Variables actually used in the tree construction: ShelveLoc, Price, Advertising, Income, CompPrice, Age
+# No. of Terminal Nodes: 16
+# Test MSE = 5.2
+```
+
+```{r}
+## (c)
+
+set.seed(2)
+cv_car = cv.tree(tree_model)
+summary(cv_car)
+plot(cv_car$size, cv_car$dev, xlab = "Terminal Nodes", ylab = "CV Error", type = "b")
+
+# Optimal value = 9 Terminal Nodes
+
+prune_car = prune.tree(tree_model, best = 9)
+tree_pred2 = predict(prune_car, Carseats[test,])
+test_mse2 = mean((tree_pred2 - Carseats[test,]$Sales)^2) # 4.98545
+
+# Pruning the tree slightly improved the MSE: 5.2 -> 4.98
+```
+
+```{r}
+## (d)
+
+library(randomForest)
+
+set.seed(2)
+bag_car = randomForest(Sales~., data = Carseats[train,], mtry = 10, importance = T)
+importance(bag_car)
+bag_pred = predict(bag_car, Carseats[test,])
+test_mse_bag = mean((bag_pred - Carseats[test,]$Sales)^2)
+
+# randomForest is not available for this version for R 
+```
+
+```{r}
+## (e)
+
+set.seed(2)
+
+car1 = randomForest(Sales~.,data=Carseats[train,],mtry=10/2,importance=T)
+importance(car1)
+
+car2 = randomForest(Sales~.,data=Carseats[train,],mtry=sqrt(10),importance=T)
+importance(car2)
+
+car3 = randomForest(Sales~.,data=Carseats[train,],mtry=10/4,importance=T)
+importance(car3)
+
+varImpPlot(car2)
+```
+
+### Chapter 8, Question 11
+
+```{r}
+
+library(ISLR)
+attach(Caravan)
+
+?Caravan # Insurance Company Benchmark - 5822 records - 86 vars
+plot(Caravan$Purchase)
+
+## (a)
+
+Caravan$PurchaseYES = rep(NA, 5822)
+for (i in 1:5822) if (Caravan$Purchase[i] == "Yes") 
+  (Caravan$PurchaseYES[i]=1) else (Caravan$PurchaseYES[i]=0)
+
+train_set = Caravan[1:1000,]
+test_set = Caravan[1001:5822,]
+```
+
+```{r}
+## (b)
+
+library(gbm)
+set.seed(10)
+boost_model = gbm(PurchaseYES~.-Purchase, data = train_set, 
+                  distribution = "bernoulli", n.trees = 1000, shrinkage = 0.01)
+
+summary(boost_model)
+
+# Most important predictor: PPERSAUT, MKOOPKLA, MOPLHOOG
+```
+
+```{r}
+## (c)
+
+pro = predict(boost_model, newdata = test_set, n.trees = 1000, type = "response")
+
+dim(test_set) # 4822 87
+
+pred = rep("No, 4822")
+pred[pro>0.20] = "Yes"
+
+act = test_set$Purchase
+table(act, pred) 
+
+```
